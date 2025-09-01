@@ -141,15 +141,39 @@ electron/
 - `npm start` - Start development server
 - `npm run build` - Build for production
 - `npm run dist` - Create distributable packages
-- `npm test` - Run tests
+- `npm test` - Run tests in interactive mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:electron` - Run Electron main process tests
+- `npm run test:all` - Run all tests with coverage
+
+## Testing
+
+The application includes comprehensive tests covering:
+
+- **Unit Tests**: File matching algorithm, individual components
+- **Integration Tests**: Complete user workflows
+- **Electron Tests**: Backend file system operations
+- **Component Tests**: React component behavior and interactions
+
+See [TESTING.md](./TESTING.md) for detailed testing information.
+
+### Running Tests
+```bash
+npm test              # Interactive test runner
+npm run test:coverage # Generate coverage report
+npm run test:all      # Run all tests
+```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+3. Write tests for new features
+4. Make your changes
+5. Ensure all tests pass
+6. Submit a pull request
+
+Please maintain test coverage above 90% for new code.
 
 ## Troubleshooting
 

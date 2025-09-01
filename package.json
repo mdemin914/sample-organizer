@@ -13,6 +13,9 @@
     "build:electron": "tsc -p electron",
     "dist": "npm run build && electron-builder",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:electron": "jest electron --testEnvironment=node",
+    "test:all": "npm run test:coverage && npm run test:electron",
     "eject": "react-scripts eject"
   },
   "keywords": [
@@ -40,9 +43,14 @@
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
+    "@types/jest": "^27.5.2",
     "concurrently": "^8.2.2",
     "electron": "^27.3.11",
     "electron-builder": "^24.6.0",
+    "ts-jest": "^27.1.5",
     "wait-on": "^7.2.0"
   },
   "browserslist": {
@@ -77,5 +85,23 @@
     "linux": {
       "target": "AppImage"
     }
+  },
+  "jest": {
+    "projects": [
+      {
+        "displayName": "electron",
+        "testMatch": ["<rootDir>/electron/**/*.test.ts"],
+        "testEnvironment": "node",
+        "transform": {
+          "^.+\\.ts$": "ts-jest"
+        },
+        "moduleFileExtensions": ["ts", "js", "json"],
+        "collectCoverageFrom": [
+          "electron/**/*.ts",
+          "!electron/**/*.test.ts",
+          "!electron/**/*.d.ts"
+        ]
+      }
+    ]
   }
 }
