@@ -29,7 +29,7 @@ const renderTree = (nodes: FolderNode[]): React.ReactNode =>
     </TreeItem>
   ));
 
-const OutputStructure: React.FC<Props> = ({ folderTree, outputDir }) => (
+const Destination: React.FC<Props> = ({ folderTree, outputDir }) => (
   <Paper sx={{ flex: 1, minWidth: 0, height: "100%", overflow: "auto", p: 1 }}>
     <Typography variant="h6" gutterBottom>
       Destination
@@ -49,4 +49,4 @@ const OutputStructure: React.FC<Props> = ({ folderTree, outputDir }) => (
   </Paper>
 );
 
-export default OutputStructure;
+export default Destination;

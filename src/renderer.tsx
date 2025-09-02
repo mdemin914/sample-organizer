@@ -13,8 +13,8 @@ import {
 } from "@mui/material";
 import { categorizeSample } from "./utils/categorizeSamples";
 import Controls from "./components/Controls";
-import InputMappings from "./components/InputMappings";
-import OutputStructure from "./components/OutputStructure";
+import ImportSamples from "./components/ImportSamples";
+import Destination from "./components/Destination";
 import { TreeView } from "@mui/x-tree-view/TreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -213,7 +213,7 @@ function App() {
           overflow: "hidden",
         }}
       >
-        <InputMappings
+        <ImportSamples
           mappings={mappings}
           inputDir={inputDir}
           outputDir={outputDir}
@@ -223,7 +223,7 @@ function App() {
           folderList={childFolders}
         />
 
-        <OutputStructure folderTree={folderTree} outputDir={outputDir} />
+        <Destination folderTree={folderTree} outputDir={outputDir} />
       </Box>
 
       <Snackbar
@@ -247,7 +247,7 @@ function App() {
 }
 
 const Root = () => {
-  const [dark, setDark] = React.useState(false);
+  const [dark, setDark] = React.useState(true);
   const theme = React.useMemo(
     () => createTheme({ palette: { mode: dark ? "dark" : "light" } }),
     [dark]

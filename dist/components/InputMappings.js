@@ -45,6 +45,7 @@ const PlayArrow_1 = __importDefault(require("@mui/icons-material/PlayArrow"));
 const Stop_1 = __importDefault(require("@mui/icons-material/Stop"));
 const openaiUtil_1 = require("../services/openaiUtil");
 const PlaybackContext_1 = require("../context/PlaybackContext");
+const react_window_1 = require("react-window");
 function getFileName(path) {
     return path.split("/").pop() || path;
 }
@@ -66,57 +67,53 @@ const InputMappings = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
             flexDirection: "column",
             overflow: "hidden",
             p: 1,
-        }, children: [(0, jsx_runtime_1.jsxs)(material_1.Typography, { variant: "h6", gutterBottom: true, children: ["Importing Samples \u2013 ", mappings.length] }), inputDir && ((0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "caption", color: "text.secondary", sx: { mb: 1 }, children: inputDir })), (0, jsx_runtime_1.jsx)(material_1.TableContainer, { sx: { flex: 1, minHeight: 0, overflowY: "auto" }, children: (0, jsx_runtime_1.jsxs)(material_1.Table, { size: "small", stickyHeader: true, children: [(0, jsx_runtime_1.jsx)(material_1.TableHead, { children: (0, jsx_runtime_1.jsxs)(material_1.TableRow, { children: [(0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Source" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Destination" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Conf" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Dup" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, {})] }) }), (0, jsx_runtime_1.jsx)(material_1.TableBody, { children: mappings.map((m, idx) => {
-                                const srcRel = inputDir
-                                    ? m.src.replace(`${inputDir}/`, "")
-                                    : m.src;
-                                const destRel = outputDir
-                                    ? m.dest.replace(`${outputDir}/`, "")
-                                    : m.dest;
-                                const srcParts = srcRel.split("/");
-                                const fileName = srcParts.pop();
-                                const srcFolder = srcParts.join("/");
-                                const destFolder = destRel.split("/").slice(0, -1).join("/");
-                                return ((0, jsx_runtime_1.jsxs)(material_1.TableRow, { children: [(0, jsx_runtime_1.jsx)(material_1.TableCell, { children: (0, jsx_runtime_1.jsxs)(material_1.Box, { children: [(0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", children: fileName }), (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "caption", color: "text.secondary", children: srcFolder })] }) }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: (0, jsx_runtime_1.jsx)(material_1.Box, { children: (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", sx: { cursor: "pointer", textDecoration: "underline" }, onClick: async () => {
+        }, children: [(0, jsx_runtime_1.jsxs)(material_1.Typography, { variant: "h6", gutterBottom: true, children: ["Importing Samples \u2013 ", mappings.length] }), inputDir && ((0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "caption", color: "text.secondary", sx: { mb: 1 }, children: inputDir })), (0, jsx_runtime_1.jsx)(material_1.TableContainer, { sx: { flex: 1, minHeight: 0, overflowY: "auto" }, children: (0, jsx_runtime_1.jsxs)(material_1.Table, { size: "small", stickyHeader: true, children: [(0, jsx_runtime_1.jsx)(material_1.TableHead, { children: (0, jsx_runtime_1.jsxs)(material_1.TableRow, { children: [(0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Source" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Destination" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Conf" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: "Dup" }), (0, jsx_runtime_1.jsx)(material_1.TableCell, {})] }) }), (0, jsx_runtime_1.jsx)(material_1.TableBody, { children: (0, jsx_runtime_1.jsx)(react_window_1.FixedSizeList, { height: 600, itemCount: mappings.length, itemSize: 38, width: "100%", children: ({ index, style }) => {
+                                    const m = mappings[index];
+                                    const srcRel = inputDir
+                                        ? m.src.replace(`${inputDir}/`, "")
+                                        : m.src;
+                                    const destRel = outputDir
+                                        ? m.dest.replace(`${outputDir}/`, "")
+                                        : m.dest;
+                                    const srcParts = srcRel.split("/");
+                                    const fileName = srcParts.pop();
+                                    const srcFolder = srcParts.join("/");
+                                    const destFolder = destRel.split("/").slice(0, -1).join("/");
+                                    return ((0, jsx_runtime_1.jsxs)(material_1.TableRow, { style: style, children: [(0, jsx_runtime_1.jsxs)(material_1.TableCell, { children: [(0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", children: fileName }), (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "caption", color: "text.secondary", children: srcFolder })] }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", sx: { cursor: "pointer", textDecoration: "underline" }, onClick: async () => {
                                                         if (!outputDir)
                                                             return;
                                                         const fullPath = destFolder.startsWith(outputDir)
                                                             ? destFolder
                                                             : `${outputDir}/${destFolder}`;
-                                                        console.log("renderer openPath", fullPath);
                                                         await window.api.openPath(fullPath);
-                                                    }, children: destFolder }) }) }), (0, jsx_runtime_1.jsxs)(material_1.TableCell, { children: [(m.confidence * 100).toFixed(0), "%"] }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: duplicateSet.has(getFileName(m.src)) && ((0, jsx_runtime_1.jsx)(material_1.Chip, { label: "Dup", size: "small", color: "warning" })) }), (0, jsx_runtime_1.jsxs)(material_1.TableCell, { children: [(0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: () => {
-                                                        if (currentSrc === m.src) {
-                                                            toggle();
-                                                        }
-                                                        else {
-                                                            play(m.src);
-                                                        }
-                                                    }, children: currentSrc === m.src && playing ? ((0, jsx_runtime_1.jsx)(Stop_1.default, { fontSize: "inherit" })) : ((0, jsx_runtime_1.jsx)(PlayArrow_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: !apiKey || loadingIdx === idx, onClick: async () => {
-                                                        if (folderList.length === 0)
-                                                            return;
-                                                        setLoadingIdx(idx);
-                                                        try {
-                                                            const folder = await (0, openaiUtil_1.classifyFile)(m.src, {
-                                                                folders: folderList,
-                                                                apiKey,
-                                                            });
-                                                            onMappingChange(idx, folder);
-                                                        }
-                                                        catch (e) {
-                                                            onError(e.message);
-                                                        }
-                                                        finally {
-                                                            setLoadingIdx(null);
-                                                        }
-                                                    }, children: loadingIdx === idx ? ((0, jsx_runtime_1.jsx)(material_1.CircularProgress, { size: 16 })) : ((0, jsx_runtime_1.jsx)(AutoFixHigh_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: async () => {
-                                                        const destFull = m.dest;
-                                                        const res = await window.api.moveFile(m.src, destFull);
-                                                        if (!res.success) {
-                                                            onError(res.error || "Move failed");
-                                                        }
-                                                    }, children: (0, jsx_runtime_1.jsx)(DriveFileMove_1.default, { fontSize: "inherit" }) })] })] }, idx));
-                            }) })] }) })] }));
+                                                    }, children: destFolder }) }), (0, jsx_runtime_1.jsxs)(material_1.TableCell, { children: [(m.confidence * 100).toFixed(0), "%"] }), (0, jsx_runtime_1.jsx)(material_1.TableCell, { children: duplicateSet.has(getFileName(m.src)) && ((0, jsx_runtime_1.jsx)(material_1.Chip, { label: "Dup", size: "small", color: "warning" })) }), (0, jsx_runtime_1.jsxs)(material_1.TableCell, { children: [(0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: () => {
+                                                            if (currentSrc === m.src)
+                                                                toggle();
+                                                            else
+                                                                play(m.src);
+                                                        }, children: currentSrc === m.src && playing ? ((0, jsx_runtime_1.jsx)(Stop_1.default, { fontSize: "inherit" })) : ((0, jsx_runtime_1.jsx)(PlayArrow_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: !apiKey || loadingIdx === index, onClick: async () => {
+                                                            if (folderList.length === 0)
+                                                                return;
+                                                            setLoadingIdx(index);
+                                                            try {
+                                                                const folder = await (0, openaiUtil_1.classifyFile)(m.src, {
+                                                                    folders: folderList,
+                                                                    apiKey,
+                                                                });
+                                                                onMappingChange(index, folder);
+                                                            }
+                                                            catch (e) {
+                                                                onError(e.message);
+                                                            }
+                                                            finally {
+                                                                setLoadingIdx(null);
+                                                            }
+                                                        }, children: loadingIdx === index ? ((0, jsx_runtime_1.jsx)(material_1.CircularProgress, { size: 16 })) : ((0, jsx_runtime_1.jsx)(AutoFixHigh_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: async () => {
+                                                            const res = await window.api.moveFile(m.src, m.dest);
+                                                            if (!res.success)
+                                                                onError(res.error || "Move failed");
+                                                        }, children: (0, jsx_runtime_1.jsx)(DriveFileMove_1.default, { fontSize: "inherit" }) })] })] }, index));
+                                } }) })] }) })] }));
 };
 exports.default = InputMappings;
 //# sourceMappingURL=InputMappings.js.map
