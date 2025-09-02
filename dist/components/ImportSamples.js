@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = require("react");
+const react_1 = __importStar(require("react"));
 const material_1 = require("@mui/material");
 const AutoFixHigh_1 = __importDefault(require("@mui/icons-material/AutoFixHigh"));
 const DriveFileMove_1 = __importDefault(require("@mui/icons-material/DriveFileMove"));
@@ -12,10 +45,23 @@ const PlayArrow_1 = __importDefault(require("@mui/icons-material/PlayArrow"));
 const Stop_1 = __importDefault(require("@mui/icons-material/Stop"));
 const openaiUtil_1 = require("../services/openaiUtil");
 const PlaybackContext_1 = require("../context/PlaybackContext");
-const react_window_1 = require("react-window");
 const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [], onMappingChange, onError, }) => {
     const [loadingIdx, setLoadingIdx] = (0, react_1.useState)(null);
+    const [currentPage, setCurrentPage] = (0, react_1.useState)(1);
+    const [pageSize] = (0, react_1.useState)(50); // 50 items per page
     const { currentSrc, playing, play, toggle } = (0, PlaybackContext_1.usePlayback)();
+    // Calculate pagination
+    const totalPages = Math.ceil(mappings.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, mappings.length);
+    const currentPageMappings = mappings.slice(startIndex, endIndex);
+    const handlePageChange = (_, page) => {
+        setCurrentPage(page);
+    };
+    // Reset to page 1 when mappings change (new data loaded)
+    react_1.default.useEffect(() => {
+        setCurrentPage(1);
+    }, [mappings.length]);
     return ((0, jsx_runtime_1.jsxs)(material_1.Paper, { sx: {
             minWidth: 0,
             flex: 3,
@@ -57,8 +103,8 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                                     flex: 2,
                                     minWidth: 0,
                                     pr: 1,
-                                } })] }), (0, jsx_runtime_1.jsx)(react_window_1.FixedSizeList, { height: 600, itemCount: mappings.length, itemSize: 38, width: "100%", children: ({ index, style, }) => {
-                            const m = mappings[index];
+                                } })] }), (0, jsx_runtime_1.jsx)(material_1.Box, { sx: { flex: 1, overflow: "auto" }, children: currentPageMappings.map((m, index) => {
+                            const actualIndex = startIndex + index;
                             // Adjust path displays
                             const srcRel = inputDir ? m.src.replace(`${inputDir}/`, "") : m.src;
                             const destRel = outputDir
@@ -68,10 +114,12 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                             const fileName = srcParts.pop();
                             const srcFolder = srcParts.join("/");
                             const destFolder = destRel.split("/").slice(0, -1).join("/");
-                            return ((0, jsx_runtime_1.jsxs)(material_1.Box, { style: style, sx: {
+                            return ((0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
                                     display: "flex",
                                     alignItems: "center",
                                     px: 2,
+                                    py: 0.5,
+                                    minHeight: 38,
                                     borderBottom: "1px solid",
                                     borderColor: "divider",
                                     "&:hover": {
@@ -127,16 +175,16 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                                                         toggle();
                                                     else
                                                         play(m.src);
-                                                }, children: currentSrc === m.src && playing ? ((0, jsx_runtime_1.jsx)(Stop_1.default, { fontSize: "inherit" })) : ((0, jsx_runtime_1.jsx)(PlayArrow_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: !apiKey || loadingIdx === index, onClick: async () => {
+                                                }, children: currentSrc === m.src && playing ? ((0, jsx_runtime_1.jsx)(Stop_1.default, { fontSize: "inherit" })) : ((0, jsx_runtime_1.jsx)(PlayArrow_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: !apiKey || loadingIdx === actualIndex, onClick: async () => {
                                                     if (folderList.length === 0)
                                                         return;
-                                                    setLoadingIdx(index);
+                                                    setLoadingIdx(actualIndex);
                                                     try {
                                                         const folder = await (0, openaiUtil_1.classifyFile)(m.src, {
                                                             folders: folderList,
                                                             apiKey,
                                                         });
-                                                        onMappingChange(index, folder);
+                                                        onMappingChange(actualIndex, folder);
                                                     }
                                                     catch (e) {
                                                         onError(e.message);
@@ -144,12 +192,12 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                                                     finally {
                                                         setLoadingIdx(null);
                                                     }
-                                                }, children: loadingIdx === index ? ((0, jsx_runtime_1.jsx)(material_1.CircularProgress, { size: 16 })) : ((0, jsx_runtime_1.jsx)(AutoFixHigh_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: async () => {
+                                                }, children: loadingIdx === actualIndex ? ((0, jsx_runtime_1.jsx)(material_1.CircularProgress, { size: 16 })) : ((0, jsx_runtime_1.jsx)(AutoFixHigh_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: async () => {
                                                     const res = await window.api.moveFile(m.src, m.dest);
                                                     if (!res.success)
                                                         onError(res.error || "Move failed");
-                                                }, children: (0, jsx_runtime_1.jsx)(DriveFileMove_1.default, { fontSize: "inherit" }) })] })] }, index));
-                        } })] })] }));
+                                                }, children: (0, jsx_runtime_1.jsx)(DriveFileMove_1.default, { fontSize: "inherit" }) })] })] }, actualIndex));
+                        }) }), (0, jsx_runtime_1.jsxs)(material_1.Stack, { direction: "row", justifyContent: "space-between", alignItems: "center", sx: { px: 2, py: 1, borderTop: 1, borderColor: "divider" }, children: [(0, jsx_runtime_1.jsxs)(material_1.Typography, { variant: "body2", color: "text.secondary", children: ["Showing ", startIndex + 1, "-", endIndex, " of ", mappings.length, " items"] }), (0, jsx_runtime_1.jsx)(material_1.Pagination, { count: totalPages, page: currentPage, onChange: handlePageChange, color: "primary", size: "small" })] })] })] }));
 };
 exports.default = ImportSamples;
 //# sourceMappingURL=ImportSamples.js.map

@@ -5,6 +5,8 @@ import {
   Box,
   IconButton,
   CircularProgress,
+  Pagination,
+  Stack,
 } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
@@ -12,7 +14,6 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import { classifyFile } from "../services/openaiUtil";
 import { usePlayback } from "../context/PlaybackContext";
-import { FixedSizeList as List } from "react-window";
 
 interface Mapping {
   src: string;
@@ -41,7 +42,24 @@ const ImportSamples: React.FC<Props> = ({
   onError,
 }) => {
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50); // 50 items per page
   const { currentSrc, playing, play, toggle } = usePlayback();
+
+  // Calculate pagination
+  const totalPages = Math.ceil(mappings.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, mappings.length);
+  const currentPageMappings = mappings.slice(startIndex, endIndex);
+
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset to page 1 when mappings change (new data loaded)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [mappings.length]);
 
   return (
     <Paper
@@ -118,21 +136,10 @@ const ImportSamples: React.FC<Props> = ({
           ></Box>
         </Box>
 
-        {/* Virtualized rows */}
-        <List
-          height={600}
-          itemCount={mappings.length}
-          itemSize={38}
-          width="100%"
-        >
-          {({
-            index,
-            style,
-          }: {
-            index: number;
-            style: React.CSSProperties;
-          }) => {
-            const m = mappings[index];
+        {/* Table rows with pagination */}
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          {currentPageMappings.map((m, index) => {
+            const actualIndex = startIndex + index;
 
             // Adjust path displays
             const srcRel = inputDir ? m.src.replace(`${inputDir}/`, "") : m.src;
@@ -146,12 +153,13 @@ const ImportSamples: React.FC<Props> = ({
 
             return (
               <Box
-                key={index}
-                style={style}
+                key={actualIndex}
                 sx={{
                   display: "flex",
                   alignItems: "center",
                   px: 2,
+                  py: 0.5,
+                  minHeight: 38,
                   borderBottom: "1px solid",
                   borderColor: "divider",
                   "&:hover": {
@@ -255,16 +263,16 @@ const ImportSamples: React.FC<Props> = ({
                   </IconButton>
                   <IconButton
                     size="small"
-                    disabled={!apiKey || loadingIdx === index}
+                    disabled={!apiKey || loadingIdx === actualIndex}
                     onClick={async () => {
                       if (folderList.length === 0) return;
-                      setLoadingIdx(index);
+                      setLoadingIdx(actualIndex);
                       try {
                         const folder = await classifyFile(m.src, {
                           folders: folderList,
                           apiKey,
                         });
-                        onMappingChange(index, folder);
+                        onMappingChange(actualIndex, folder);
                       } catch (e) {
                         onError((e as Error).message);
                       } finally {
@@ -272,7 +280,7 @@ const ImportSamples: React.FC<Props> = ({
                       }
                     }}
                   >
-                    {loadingIdx === index ? (
+                    {loadingIdx === actualIndex ? (
                       <CircularProgress size={16} />
                     ) : (
                       <AutoFixHighIcon fontSize="inherit" />
@@ -293,8 +301,27 @@ const ImportSamples: React.FC<Props> = ({
                 </Box>
               </Box>
             );
-          }}
-        </List>
+          })}
+        </Box>
+
+        {/* Pagination controls */}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ px: 2, py: 1, borderTop: 1, borderColor: "divider" }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Showing {startIndex + 1}-{endIndex} of {mappings.length} items
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            size="small"
+          />
+        </Stack>
       </Box>
     </Paper>
   );

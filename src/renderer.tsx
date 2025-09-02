@@ -187,7 +187,13 @@ function App() {
 
   const content = (
     <Box
-      sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}
+      sx={{
+        p: 2,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        pb: 8.75, // Add bottom padding to account for sticky Player component
+      }}
     >
       <Typography variant="h4" gutterBottom>
         Sample Organizer
