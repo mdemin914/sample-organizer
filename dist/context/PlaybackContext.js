@@ -19,6 +19,22 @@ const PlaybackProvider = ({ children, }) => {
     const [currentTime, setCurrentTime] = (0, react_1.useState)(0);
     const [volume, setVolumeState] = (0, react_1.useState)(0.6);
     const [loop, setLoop] = (0, react_1.useState)(false);
+    // Load volume from settings on startup
+    (0, react_1.useEffect)(() => {
+        const loadVolumeSettings = async () => {
+            try {
+                const settings = await window.api.loadSettings();
+                if (settings.volume !== undefined) {
+                    setVolumeState(settings.volume);
+                    audioRef.current.volume = settings.volume;
+                }
+            }
+            catch (err) {
+                console.error("Failed to load volume settings:", err);
+            }
+        };
+        loadVolumeSettings();
+    }, []);
     // listeners
     (0, react_1.useEffect)(() => {
         const audio = audioRef.current;
@@ -66,9 +82,20 @@ const PlaybackProvider = ({ children, }) => {
         audioRef.current.currentTime = t;
         setCurrentTime(t);
     };
-    const setVolume = (v) => {
+    const setVolume = async (v) => {
         setVolumeState(v);
         audioRef.current.volume = v;
+        // Save volume to settings
+        try {
+            const currentSettings = await window.api.loadSettings();
+            await window.api.saveSettings({
+                ...currentSettings,
+                volume: v,
+            });
+        }
+        catch (err) {
+            console.error("Failed to save volume setting:", err);
+        }
     };
     const toggleLoop = () => setLoop((l) => !l);
     return ((0, jsx_runtime_1.jsx)(PlaybackContext.Provider, { value: {

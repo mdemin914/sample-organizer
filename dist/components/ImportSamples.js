@@ -43,9 +43,10 @@ const AutoFixHigh_1 = __importDefault(require("@mui/icons-material/AutoFixHigh")
 const DriveFileMove_1 = __importDefault(require("@mui/icons-material/DriveFileMove"));
 const PlayArrow_1 = __importDefault(require("@mui/icons-material/PlayArrow"));
 const Stop_1 = __importDefault(require("@mui/icons-material/Stop"));
+const CreateNewFolder_1 = __importDefault(require("@mui/icons-material/CreateNewFolder"));
 const openaiUtil_1 = require("../services/openaiUtil");
 const PlaybackContext_1 = require("../context/PlaybackContext");
-const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [], onMappingChange, onError, }) => {
+const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [], allDirectories = [], onMappingChange, onError, onFolderCreated, }) => {
     const [loadingIdx, setLoadingIdx] = (0, react_1.useState)(null);
     const [currentPage, setCurrentPage] = (0, react_1.useState)(1);
     const [pageSize] = (0, react_1.useState)(50); // 50 items per page
@@ -62,6 +63,18 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
     react_1.default.useEffect(() => {
         setCurrentPage(1);
     }, [mappings.length]);
+    // Simple function to check if a folder exists in the directory list
+    const checkFolderExists = (destFolder) => {
+        if (!outputDir)
+            return false;
+        const fullPath = `${outputDir}/${destFolder}`;
+        // Try both exact match and normalized match
+        const normalizedPath = fullPath.replace(/\/+/g, "/"); // Remove double slashes
+        const exists = allDirectories.includes(fullPath) ||
+            allDirectories.includes(normalizedPath) ||
+            allDirectories.some((dir) => dir.endsWith(`/${destFolder}`));
+        return exists;
+    };
     return ((0, jsx_runtime_1.jsxs)(material_1.Paper, { sx: {
             minWidth: 0,
             flex: 3,
@@ -107,13 +120,87 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                             const actualIndex = startIndex + index;
                             // Adjust path displays
                             const srcRel = inputDir ? m.src.replace(`${inputDir}/`, "") : m.src;
-                            const destRel = outputDir
-                                ? m.dest.replace(`${outputDir}/`, "")
-                                : m.dest;
                             const srcParts = srcRel.split("/");
                             const fileName = srcParts.pop();
                             const srcFolder = srcParts.join("/");
+                            // Handle empty destinations
+                            if (!m.dest) {
+                                return ((0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
+                                        display: "flex",
+                                        alignItems: "center",
+                                        px: 2,
+                                        py: 0.5,
+                                        minHeight: 38,
+                                        borderBottom: "1px solid",
+                                        borderColor: "divider",
+                                        "&:hover": {
+                                            backgroundColor: "action.hover",
+                                        },
+                                    }, children: [(0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
+                                                flex: 10,
+                                                minWidth: 0,
+                                                pr: 1,
+                                                overflow: "hidden",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                justifyContent: "center",
+                                            }, children: [(0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", noWrap: true, sx: {
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap",
+                                                    }, title: fileName, children: fileName }), (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "caption", color: "text.secondary", noWrap: true, sx: {
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap",
+                                                    }, title: srcFolder, children: srcFolder })] }), (0, jsx_runtime_1.jsx)(material_1.Box, { sx: {
+                                                flex: 8,
+                                                minWidth: 0,
+                                                pr: 1,
+                                                overflow: "hidden",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 0.5,
+                                            }, children: (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", sx: {
+                                                    color: "text.secondary",
+                                                    fontStyle: "italic",
+                                                }, children: "No destination set" }) }), (0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
+                                                flex: 2,
+                                                minWidth: 0,
+                                                display: "flex",
+                                                gap: 0.5,
+                                                pr: 1,
+                                                alignItems: "center",
+                                                justifyContent: "flex-start",
+                                            }, children: [(0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: () => {
+                                                        if (currentSrc === m.src)
+                                                            toggle();
+                                                        else
+                                                            play(m.src);
+                                                    }, children: currentSrc === m.src && playing ? ((0, jsx_runtime_1.jsx)(Stop_1.default, { fontSize: "inherit" })) : ((0, jsx_runtime_1.jsx)(PlayArrow_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: !apiKey || loadingIdx === actualIndex, onClick: async () => {
+                                                        if (folderList.length === 0)
+                                                            return;
+                                                        setLoadingIdx(actualIndex);
+                                                        try {
+                                                            const folder = await (0, openaiUtil_1.classifyFile)(m.src, {
+                                                                folders: folderList,
+                                                                apiKey,
+                                                            });
+                                                            onMappingChange(actualIndex, folder);
+                                                        }
+                                                        catch (e) {
+                                                            onError(e.message);
+                                                        }
+                                                        finally {
+                                                            setLoadingIdx(null);
+                                                        }
+                                                    }, children: loadingIdx === actualIndex ? ((0, jsx_runtime_1.jsx)(material_1.CircularProgress, { size: 16 })) : ((0, jsx_runtime_1.jsx)(AutoFixHigh_1.default, { fontSize: "inherit" })) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", disabled: true, title: "Set destination first to import", children: (0, jsx_runtime_1.jsx)(DriveFileMove_1.default, { fontSize: "inherit" }) })] })] }, actualIndex));
+                            }
+                            const destRel = outputDir
+                                ? m.dest.replace(`${outputDir}/`, "")
+                                : m.dest;
                             const destFolder = destRel.split("/").slice(0, -1).join("/");
+                            // Check if destination folder exists in the directory list
+                            const folderExists = checkFolderExists(destFolder);
                             return ((0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
                                     display: "flex",
                                     alignItems: "center",
@@ -141,28 +228,55 @@ const ImportSamples = ({ mappings, inputDir, outputDir, apiKey, folderList = [],
                                                     overflow: "hidden",
                                                     textOverflow: "ellipsis",
                                                     whiteSpace: "nowrap",
-                                                }, title: srcFolder, children: srcFolder })] }), (0, jsx_runtime_1.jsx)(material_1.Box, { sx: {
+                                                }, title: srcFolder, children: srcFolder })] }), (0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
                                             flex: 8,
                                             minWidth: 0,
                                             pr: 1,
                                             overflow: "hidden",
                                             display: "flex",
-                                            flexDirection: "column",
-                                            justifyContent: "center",
-                                        }, children: (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", noWrap: true, sx: {
-                                                cursor: "pointer",
-                                                textDecoration: "underline",
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                whiteSpace: "nowrap",
-                                            }, title: destFolder, onClick: async () => {
-                                                if (!outputDir)
-                                                    return;
-                                                const fullPath = destFolder.startsWith(outputDir)
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                        }, children: [(0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", noWrap: true, sx: {
+                                                    cursor: "pointer",
+                                                    textDecoration: "underline",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    whiteSpace: "nowrap",
+                                                    flex: 1,
+                                                    color: folderExists ? "inherit" : "warning.main",
+                                                }, title: folderExists
                                                     ? destFolder
-                                                    : `${outputDir}/${destFolder}`;
-                                                await window.api.openPath(fullPath);
-                                            }, children: destFolder }) }), (0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
+                                                    : `${destFolder} (doesn't exist)`, onClick: async () => {
+                                                    if (!outputDir || !folderExists)
+                                                        return;
+                                                    const fullPath = destFolder.startsWith(outputDir)
+                                                        ? destFolder
+                                                        : `${outputDir}/${destFolder}`;
+                                                    await window.api.openPath(fullPath);
+                                                }, children: destFolder }), !folderExists && ((0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", sx: {
+                                                    color: "success.main",
+                                                    "&:hover": {
+                                                        backgroundColor: "success.light",
+                                                        color: "success.contrastText",
+                                                    },
+                                                }, title: `Create folder "${destFolder}"`, onClick: async () => {
+                                                    if (!outputDir)
+                                                        return;
+                                                    const fullPath = `${outputDir}/${destFolder}`;
+                                                    try {
+                                                        const result = await window.api.createDirectory(fullPath);
+                                                        if (result.success) {
+                                                            // Refresh the folder list
+                                                            onFolderCreated?.();
+                                                        }
+                                                        else {
+                                                            onError(result.error || "Failed to create directory");
+                                                        }
+                                                    }
+                                                    catch (error) {
+                                                        onError("Failed to create directory");
+                                                    }
+                                                }, children: (0, jsx_runtime_1.jsx)(CreateNewFolder_1.default, { fontSize: "inherit" }) }))] }), (0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
                                             flex: 2,
                                             minWidth: 0,
                                             display: "flex",

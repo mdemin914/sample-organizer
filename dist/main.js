@@ -77,6 +77,40 @@ electron_1.app.on("window-all-closed", () => {
     if (process.platform !== "darwin")
         electron_1.app.quit();
 });
+// Settings file path
+const getSettingsPath = () => (0, path_1.join)(electron_1.app.getPath("userData"), "settings.json");
+// Settings helpers
+async function loadSettings() {
+    try {
+        const settingsPath = getSettingsPath();
+        if (await fs_extra_1.default.pathExists(settingsPath)) {
+            return await fs_extra_1.default.readJson(settingsPath);
+        }
+    }
+    catch (error) {
+        console.error("Failed to load settings:", error);
+    }
+    return {};
+}
+async function saveSettings(settings) {
+    try {
+        const settingsPath = getSettingsPath();
+        await fs_extra_1.default.ensureDir((0, path_1.join)(settingsPath, ".."));
+        await fs_extra_1.default.writeJson(settingsPath, settings, { spaces: 2 });
+    }
+    catch (error) {
+        console.error("Failed to save settings:", error);
+        throw error;
+    }
+}
+// IPC handlers for settings
+electron_1.ipcMain.handle("load-settings", async () => {
+    return await loadSettings();
+});
+electron_1.ipcMain.handle("save-settings", async (_event, settings) => {
+    await saveSettings(settings);
+    return { success: true };
+});
 // IPC handlers
 electron_1.ipcMain.handle("select-directory", async () => {
     const { canceled, filePaths } = await electron_1.dialog.showOpenDialog({
@@ -105,9 +139,36 @@ function walk(dir, fileList = []) {
     });
     return fileList;
 }
+// Recursively walk directory to get all subdirectories
+function walkDirectories(dir, dirList = []) {
+    try {
+        const files = fs_extra_1.default.readdirSync(dir);
+        files.forEach((file) => {
+            const filePath = (0, path_1.join)(dir, file);
+            const stat = fs_extra_1.default.statSync(filePath);
+            if (stat.isDirectory()) {
+                dirList.push(filePath);
+                walkDirectories(filePath, dirList);
+            }
+        });
+    }
+    catch (e) {
+        console.error(`Error scanning directory ${dir}:`, e);
+    }
+    return dirList;
+}
 electron_1.ipcMain.handle("scan-directory", async (_event, dir) => {
     try {
         return walk(dir);
+    }
+    catch (e) {
+        console.error(e);
+        return [];
+    }
+});
+electron_1.ipcMain.handle("scan-directories", async (_event, dir) => {
+    try {
+        return walkDirectories(dir);
     }
     catch (e) {
         console.error(e);
@@ -149,6 +210,25 @@ electron_1.ipcMain.handle("move-file", async (_e, src, dest) => {
     catch (e) {
         console.error(e);
         return { success: false, error: e.message };
+    }
+});
+electron_1.ipcMain.handle("create-directory", async (_e, dirPath) => {
+    try {
+        await fs_extra_1.default.ensureDir(dirPath);
+        return { success: true };
+    }
+    catch (e) {
+        console.error(e);
+        return { success: false, error: e.message };
+    }
+});
+electron_1.ipcMain.handle("directory-exists", async (_e, dirPath) => {
+    try {
+        const stat = await fs_extra_1.default.stat(dirPath);
+        return { exists: stat.isDirectory() };
+    }
+    catch (e) {
+        return { exists: false };
     }
 });
 //# sourceMappingURL=main.js.map

@@ -6,6 +6,12 @@ import installExtension, {
   REACT_DEVELOPER_TOOLS,
 } from "electron-devtools-installer";
 
+interface Settings {
+  apiKey?: string;
+  defaultDestination?: string;
+  volume?: number;
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 async function createWindow() {
@@ -47,6 +53,43 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+// Settings file path
+const getSettingsPath = () => join(app.getPath("userData"), "settings.json");
+
+// Settings helpers
+async function loadSettings(): Promise<Settings> {
+  try {
+    const settingsPath = getSettingsPath();
+    if (await fs.pathExists(settingsPath)) {
+      return await fs.readJson(settingsPath);
+    }
+  } catch (error) {
+    console.error("Failed to load settings:", error);
+  }
+  return {};
+}
+
+async function saveSettings(settings: Settings): Promise<void> {
+  try {
+    const settingsPath = getSettingsPath();
+    await fs.ensureDir(join(settingsPath, ".."));
+    await fs.writeJson(settingsPath, settings, { spaces: 2 });
+  } catch (error) {
+    console.error("Failed to save settings:", error);
+    throw error;
+  }
+}
+
+// IPC handlers for settings
+ipcMain.handle("load-settings", async () => {
+  return await loadSettings();
+});
+
+ipcMain.handle("save-settings", async (_event, settings: Settings) => {
+  await saveSettings(settings);
+  return { success: true };
+});
+
 // IPC handlers
 ipcMain.handle("select-directory", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -75,9 +118,36 @@ function walk(dir: string, fileList: string[] = []): string[] {
   return fileList;
 }
 
+// Recursively walk directory to get all subdirectories
+function walkDirectories(dir: string, dirList: string[] = []): string[] {
+  try {
+    const files = fs.readdirSync(dir);
+    files.forEach((file) => {
+      const filePath = join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        dirList.push(filePath);
+        walkDirectories(filePath, dirList);
+      }
+    });
+  } catch (e) {
+    console.error(`Error scanning directory ${dir}:`, e);
+  }
+  return dirList;
+}
+
 ipcMain.handle("scan-directory", async (_event, dir: string) => {
   try {
     return walk(dir);
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+});
+
+ipcMain.handle("scan-directories", async (_event, dir: string) => {
+  try {
+    return walkDirectories(dir);
   } catch (e) {
     console.error(e);
     return [];
@@ -121,5 +191,24 @@ ipcMain.handle("move-file", async (_e, src: string, dest: string) => {
   } catch (e) {
     console.error(e);
     return { success: false, error: (e as Error).message };
+  }
+});
+
+ipcMain.handle("create-directory", async (_e, dirPath: string) => {
+  try {
+    await fs.ensureDir(dirPath);
+    return { success: true };
+  } catch (e) {
+    console.error(e);
+    return { success: false, error: (e as Error).message };
+  }
+});
+
+ipcMain.handle("directory-exists", async (_e, dirPath: string) => {
+  try {
+    const stat = await fs.stat(dirPath);
+    return { exists: stat.isDirectory() };
+  } catch (e) {
+    return { exists: false };
   }
 });

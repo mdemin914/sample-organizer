@@ -12,6 +12,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import { classifyFile } from "../services/openaiUtil";
 import { usePlayback } from "../context/PlaybackContext";
 
@@ -28,8 +29,10 @@ interface Props {
   outputDir: string | null;
   apiKey: string;
   folderList: string[];
+  allDirectories: string[];
   onMappingChange: (idx: number, newFolder: string) => void;
   onError: (msg: string) => void;
+  onFolderCreated?: () => void;
 }
 
 const ImportSamples: React.FC<Props> = ({
@@ -38,8 +41,10 @@ const ImportSamples: React.FC<Props> = ({
   outputDir,
   apiKey,
   folderList = [],
+  allDirectories = [],
   onMappingChange,
   onError,
+  onFolderCreated,
 }) => {
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,6 +65,21 @@ const ImportSamples: React.FC<Props> = ({
   React.useEffect(() => {
     setCurrentPage(1);
   }, [mappings.length]);
+
+  // Simple function to check if a folder exists in the directory list
+  const checkFolderExists = (destFolder: string): boolean => {
+    if (!outputDir) return false;
+    const fullPath = `${outputDir}/${destFolder}`;
+
+    // Try both exact match and normalized match
+    const normalizedPath = fullPath.replace(/\/+/g, "/"); // Remove double slashes
+    const exists =
+      allDirectories.includes(fullPath) ||
+      allDirectories.includes(normalizedPath) ||
+      allDirectories.some((dir) => dir.endsWith(`/${destFolder}`));
+
+    return exists;
+  };
 
   return (
     <Paper
@@ -143,13 +163,154 @@ const ImportSamples: React.FC<Props> = ({
 
             // Adjust path displays
             const srcRel = inputDir ? m.src.replace(`${inputDir}/`, "") : m.src;
-            const destRel = outputDir
-              ? m.dest.replace(`${outputDir}/`, "")
-              : m.dest;
             const srcParts = srcRel.split("/");
             const fileName = srcParts.pop();
             const srcFolder = srcParts.join("/");
+
+            // Handle empty destinations
+            if (!m.dest) {
+              return (
+                <Box
+                  key={actualIndex}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    px: 2,
+                    py: 0.5,
+                    minHeight: 38,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                    "&:hover": {
+                      backgroundColor: "action.hover",
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      flex: 10,
+                      minWidth: 0,
+                      pr: 1,
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={fileName}
+                    >
+                      {fileName}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      noWrap
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={srcFolder}
+                    >
+                      {srcFolder}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      flex: 8,
+                      minWidth: 0,
+                      pr: 1,
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No destination set
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      flex: 2,
+                      minWidth: 0,
+                      display: "flex",
+                      gap: 0.5,
+                      pr: 1,
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        if (currentSrc === m.src) toggle();
+                        else play(m.src);
+                      }}
+                    >
+                      {currentSrc === m.src && playing ? (
+                        <StopIcon fontSize="inherit" />
+                      ) : (
+                        <PlayArrowIcon fontSize="inherit" />
+                      )}
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      disabled={!apiKey || loadingIdx === actualIndex}
+                      onClick={async () => {
+                        if (folderList.length === 0) return;
+                        setLoadingIdx(actualIndex);
+                        try {
+                          const folder = await classifyFile(m.src, {
+                            folders: folderList,
+                            apiKey,
+                          });
+                          onMappingChange(actualIndex, folder);
+                        } catch (e) {
+                          onError((e as Error).message);
+                        } finally {
+                          setLoadingIdx(null);
+                        }
+                      }}
+                    >
+                      {loadingIdx === actualIndex ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <AutoFixHighIcon fontSize="inherit" />
+                      )}
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      disabled={true}
+                      title="Set destination first to import"
+                    >
+                      <DriveFileMoveIcon fontSize="inherit" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            }
+
+            const destRel = outputDir
+              ? m.dest.replace(`${outputDir}/`, "")
+              : m.dest;
             const destFolder = destRel.split("/").slice(0, -1).join("/");
+
+            // Check if destination folder exists in the directory list
+            const folderExists = checkFolderExists(destFolder);
 
             return (
               <Box
@@ -211,8 +372,8 @@ const ImportSamples: React.FC<Props> = ({
                     pr: 1,
                     overflow: "hidden",
                     display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 0.5,
                   }}
                 >
                   <Typography
@@ -224,10 +385,16 @@ const ImportSamples: React.FC<Props> = ({
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
+                      flex: 1,
+                      color: folderExists ? "inherit" : "warning.main",
                     }}
-                    title={destFolder}
+                    title={
+                      folderExists
+                        ? destFolder
+                        : `${destFolder} (doesn't exist)`
+                    }
                     onClick={async () => {
-                      if (!outputDir) return;
+                      if (!outputDir || !folderExists) return;
                       const fullPath = destFolder.startsWith(outputDir)
                         ? destFolder
                         : `${outputDir}/${destFolder}`;
@@ -236,6 +403,40 @@ const ImportSamples: React.FC<Props> = ({
                   >
                     {destFolder}
                   </Typography>
+                  {!folderExists && (
+                    <IconButton
+                      size="small"
+                      sx={{
+                        color: "success.main",
+                        "&:hover": {
+                          backgroundColor: "success.light",
+                          color: "success.contrastText",
+                        },
+                      }}
+                      title={`Create folder "${destFolder}"`}
+                      onClick={async () => {
+                        if (!outputDir) return;
+                        const fullPath = `${outputDir}/${destFolder}`;
+                        try {
+                          const result = await window.api.createDirectory(
+                            fullPath
+                          );
+                          if (result.success) {
+                            // Refresh the folder list
+                            onFolderCreated?.();
+                          } else {
+                            onError(
+                              result.error || "Failed to create directory"
+                            );
+                          }
+                        } catch (error) {
+                          onError("Failed to create directory");
+                        }
+                      }}
+                    >
+                      <CreateNewFolderIcon fontSize="inherit" />
+                    </IconButton>
+                  )}
                 </Box>
                 <Box
                   sx={{

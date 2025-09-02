@@ -11,8 +11,10 @@ interface Props {
     outputDir: string | null;
     apiKey: string;
     folderList: string[];
+    allDirectories: string[];
     onMappingChange: (idx: number, newFolder: string) => void;
     onError: (msg: string) => void;
+    onFolderCreated?: () => void;
 }
 declare const ImportSamples: React.FC<Props>;
 export default ImportSamples;

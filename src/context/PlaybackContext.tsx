@@ -41,6 +41,23 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({
   const [volume, setVolumeState] = useState(0.6);
   const [loop, setLoop] = useState(false);
 
+  // Load volume from settings on startup
+  useEffect(() => {
+    const loadVolumeSettings = async () => {
+      try {
+        const settings = await window.api.loadSettings();
+        if (settings.volume !== undefined) {
+          setVolumeState(settings.volume);
+          audioRef.current.volume = settings.volume;
+        }
+      } catch (err) {
+        console.error("Failed to load volume settings:", err);
+      }
+    };
+
+    loadVolumeSettings();
+  }, []);
+
   // listeners
   useEffect(() => {
     const audio = audioRef.current;
@@ -90,9 +107,20 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({
     setCurrentTime(t);
   };
 
-  const setVolume = (v: number) => {
+  const setVolume = async (v: number) => {
     setVolumeState(v);
     audioRef.current.volume = v;
+
+    // Save volume to settings
+    try {
+      const currentSettings = await window.api.loadSettings();
+      await window.api.saveSettings({
+        ...currentSettings,
+        volume: v,
+      });
+    } catch (err) {
+      console.error("Failed to save volume setting:", err);
+    }
   };
 
   const toggleLoop = () => setLoop((l) => !l);

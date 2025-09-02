@@ -22,7 +22,7 @@ const Player = () => {
     const { currentSrc, playing, duration, currentTime, toggle, seek, volume, setVolume, loop, toggleLoop, } = (0, PlaybackContext_1.usePlayback)();
     const disabled = !currentSrc;
     return ((0, jsx_runtime_1.jsxs)(material_1.Box, { sx: {
-            position: "sticky",
+            position: "fixed",
             bottom: 0,
             left: 0,
             right: 0,
@@ -33,6 +33,7 @@ const Player = () => {
             display: "flex",
             alignItems: "center",
             gap: 2,
+            zIndex: (theme) => theme.zIndex.appBar + 1,
         }, children: [(0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: toggle, disabled: disabled, children: playing ? (0, jsx_runtime_1.jsx)(Pause_1.default, {}) : (0, jsx_runtime_1.jsx)(PlayArrow_1.default, {}) }), (0, jsx_runtime_1.jsx)(material_1.IconButton, { size: "small", onClick: toggleLoop, color: loop ? "primary" : "default", disabled: disabled, children: (0, jsx_runtime_1.jsx)(Loop_1.default, {}) }), (0, jsx_runtime_1.jsx)(material_1.Typography, { variant: "body2", sx: {
                     flex: 1,
                     minWidth: 0,

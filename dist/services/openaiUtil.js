@@ -7,7 +7,7 @@ exports.mapFilenamesToFolders = mapFilenamesToFolders;
 exports.mapFilenamesBatched = mapFilenamesBatched;
 exports.classifyFile = classifyFile;
 const openai_1 = __importDefault(require("openai"));
-const SYSTEM_PROMPT = "You classify sample filenames into predefined folder names and return strict JSON.  If you are not sure, return the most logical missing folder";
+const SYSTEM_PROMPT = "You classify audio sample files into predefined folder names and return strict JSON. IMPORTANT: Focus primarily on the FILENAME itself to determine the sample type. The file path provides context but should NOT override clear indicators in the filename. For example, if a file is named 'Melody_140BPM.wav' but is in a 'Drums' folder, it should still be classified as a melody based on the filename. If you are not sure, return the most logical missing folder.";
 async function mapFilenamesToFolders({ filenames, folders, apiKey, examples = [], }) {
     const openai = new openai_1.default({ apiKey, dangerouslyAllowBrowser: true });
     const examplesText = examples
@@ -36,7 +36,16 @@ async function mapFilenamesToFolders({ filenames, folders, apiKey, examples = []
         throw e;
     }
     console.log(JSON.stringify(response, null, 2));
-    return JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content);
+    // Re-key the result to use full file paths instead of just filenames
+    const rekeyedResult = {};
+    for (const filename of filenames) {
+        const justFilename = filename.split("/").pop(); // Get just the filename part
+        if (justFilename && result[justFilename]) {
+            rekeyedResult[filename] = result[justFilename];
+        }
+    }
+    return rekeyedResult;
 }
 async function mapFilenamesBatched(req) {
     const { filenames, batchSize = 200 } = req;

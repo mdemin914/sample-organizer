@@ -34,7 +34,7 @@ const Player: React.FC = () => {
   return (
     <Box
       sx={{
-        position: "sticky",
+        position: "fixed",
         bottom: 0,
         left: 0,
         right: 0,
@@ -45,6 +45,7 @@ const Player: React.FC = () => {
         display: "flex",
         alignItems: "center",
         gap: 2,
+        zIndex: (theme) => theme.zIndex.appBar + 1,
       }}
     >
       <IconButton size="small" onClick={toggle} disabled={disabled}>

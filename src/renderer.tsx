@@ -14,7 +14,7 @@ import {
 import { categorizeSample } from "./utils/categorizeSamples";
 import Controls from "./components/Controls";
 import ImportSamples from "./components/ImportSamples";
-import Destination from "./components/Destination";
+import Library from "./components/Library";
 import { TreeView } from "@mui/x-tree-view/TreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -23,8 +23,10 @@ import { mapFilenamesBatched } from "./services/openaiUtil";
 import { randomSample } from "./utils/randomSample";
 import { PlaybackProvider } from "./context/PlaybackContext";
 import Player from "./components/Player";
+import Settings from "./components/Settings";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 interface Mapping {
   src: string;
@@ -45,6 +47,7 @@ function App() {
   const [outputDir, setOutputDir] = useState<string | null>(null);
   const [inputDir, setInputDir] = useState<string | null>(null);
   const [outputStructure, setOutputStructure] = useState<string[]>([]);
+  const [allDirectories, setAllDirectories] = useState<string[]>([]);
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [apiKey, setApiKey] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,44 @@ function App() {
     [dark]
   );
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  // Load settings on app startup
+  React.useEffect(() => {
+    const loadAppSettings = async () => {
+      try {
+        const settings = await window.api.loadSettings();
+
+        // Pre-populate API key
+        if (settings.apiKey) {
+          setApiKey(settings.apiKey);
+        }
+
+        // Auto-select default destination if explicitly saved in settings
+        if (settings.defaultDestination) {
+          try {
+            const [files, directories] = await Promise.all([
+              window.api.scanDirectory(settings.defaultDestination),
+              window.api.scanDirectories(settings.defaultDestination),
+            ]);
+            setOutputDir(settings.defaultDestination);
+            setOutputStructure(files);
+            setAllDirectories(directories);
+          } catch (err) {
+            console.warn("Failed to load default destination:", err);
+            // Don't show error to user, just continue without default
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+        // Don't show error to user, app should work without settings
+      } finally {
+        setSettingsLoaded(true);
+      }
+    };
+
+    loadAppSettings();
+  }, []);
 
   interface FolderNode {
     name: string;
@@ -104,6 +145,30 @@ function App() {
     );
   }, [outputStructure, outputDir]);
 
+  // Function to find the full path of a folder by searching through all directories
+  const findFolderPath = React.useCallback((folderName: string): string => {
+    if (!outputDir || !folderName) return folderName;
+    
+    // First try exact folder name match at root level
+    const rootLevelPath = `${outputDir}/${folderName}`;
+    if (allDirectories.includes(rootLevelPath)) {
+      return rootLevelPath;
+    }
+    
+    // Then search through all subdirectories for a folder ending with this name
+    const matchingDir = allDirectories.find(dir => {
+      const folderNameFromPath = dir.split('/').pop();
+      return folderNameFromPath === folderName;
+    });
+    
+    if (matchingDir) {
+      return matchingDir;
+    }
+    
+    // If no exact match found, return the original construction as fallback
+    return rootLevelPath;
+  }, [outputDir, allDirectories]);
+
   const renderTree = (nodes: FolderNode[]) =>
     nodes.map((node) => (
       <TreeItem key={node.path} nodeId={node.path} label={node.name}>
@@ -116,8 +181,12 @@ function App() {
     const dir = await window.api.selectDirectory();
     if (dir) {
       setOutputDir(dir);
-      const files = await window.api.scanDirectory(dir);
+      const [files, directories] = await Promise.all([
+        window.api.scanDirectory(dir),
+        window.api.scanDirectories(dir),
+      ]);
       setOutputStructure(files);
+      setAllDirectories(directories);
     }
   };
 
@@ -128,11 +197,10 @@ function App() {
       if (!outputDir) return;
       const files = await window.api.scanDirectory(dir);
       const newMappings: Mapping[] = files.map((file) => {
-        const { categoryPath, confidence } = categorizeSample(file);
         return {
           src: file,
-          dest: `${outputDir}/${categoryPath}${file.split("/").pop()}`!,
-          confidence,
+          dest: "", // Empty destination - user must use AI auto-map or manually set
+          confidence: 0,
         };
       });
       setMappings(newMappings);
@@ -159,11 +227,14 @@ function App() {
         apiKey,
         examples,
       });
-      const newM: Mapping[] = files.map((f) => ({
-        src: f,
-        dest: `${outputDir}/${mapping[f]}/${f.split("/").pop()}`,
-        confidence: 1,
-      }));
+      const newM: Mapping[] = files.map((f) => {
+        const folderPath = findFolderPath(mapping[f]);
+        return {
+          src: f,
+          dest: `${folderPath}/${f.split("/").pop()}`,
+          confidence: 1,
+        };
+      });
       setMappings(newM);
     } catch (e) {
       setError((e as Error).message);
@@ -172,16 +243,18 @@ function App() {
 
   const handleRowUpdate = (idx: number, newFolder: string) => {
     setMappings((prev) =>
-      prev.map((m, i) =>
-        i === idx
-          ? {
-              ...m,
-              dest: `${outputDir}/${newFolder}/${m.src.split("/").pop()}`,
-              aiFolder: newFolder,
-              confidence: 1,
-            }
-          : m
-      )
+      prev.map((m, i) => {
+        if (i === idx) {
+          const folderPath = findFolderPath(newFolder);
+          return {
+            ...m,
+            dest: `${folderPath}/${m.src.split("/").pop()}`,
+            aiFolder: newFolder,
+            confidence: 1,
+          };
+        }
+        return m;
+      })
     );
   };
 
@@ -227,9 +300,21 @@ function App() {
           onMappingChange={handleRowUpdate}
           onError={setError}
           folderList={childFolders}
+          allDirectories={allDirectories}
+          onFolderCreated={async () => {
+            if (outputDir) {
+              // Refresh both file and directory lists when a new folder is created
+              const [files, directories] = await Promise.all([
+                window.api.scanDirectory(outputDir),
+                window.api.scanDirectories(outputDir),
+              ]);
+              setOutputStructure(files);
+              setAllDirectories(directories);
+            }
+          }}
         />
 
-        <Destination folderTree={folderTree} outputDir={outputDir} />
+        <Library folderTree={folderTree} outputDir={outputDir} />
       </Box>
 
       <Snackbar
@@ -254,6 +339,7 @@ function App() {
 
 const Root = () => {
   const [dark, setDark] = React.useState(true);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
   const theme = React.useMemo(
     () => createTheme({ palette: { mode: dark ? "dark" : "light" } }),
     [dark]
@@ -263,15 +349,32 @@ const Root = () => {
       <CssBaseline />
       <PlaybackProvider>
         <App />
-        <IconButton
-          sx={{ position: "fixed", top: 8, right: 8 }}
-          onClick={() => setDark((d) => !d)}
-          color="inherit"
-          size="small"
+        <Box
+          sx={{
+            position: "fixed",
+            top: 8,
+            right: 8,
+            display: "flex",
+            gap: 0.5,
+          }}
         >
-          {dark ? <Brightness7Icon /> : <Brightness4Icon />}
-        </IconButton>
+          <IconButton
+            onClick={() => setSettingsOpen(true)}
+            color="inherit"
+            size="small"
+          >
+            <SettingsIcon />
+          </IconButton>
+          <IconButton
+            onClick={() => setDark((d) => !d)}
+            color="inherit"
+            size="small"
+          >
+            {dark ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
+        </Box>
         <Player />
+        <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </PlaybackProvider>
     </ThemeProvider>
   );
