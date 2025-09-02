@@ -1,0 +1,55 @@
+# Dependabot configuration for automatic dependency updates
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Allow both direct and indirect updates
+    open-pull-requests-limit: 10
+    # Group updates by type
+    groups:
+      production-dependencies:
+        patterns:
+          - "@emotion/*"
+          - "@mui/*"
+          - "react*"
+          - "electron"
+          - "openai"
+          - "fs-extra"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "webpack*"
+          - "jest"
+          - "ts-*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Security updates
+    assignees:
+      - "@me"
+    reviewers:
+      - "@me"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
