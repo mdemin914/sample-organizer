@@ -47,7 +47,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.5",
-    "@mui/material": "^5.15.5",
+    "@mui/material": "^7.3.2",
     "@mui/x-tree-view": "^6.0.0-alpha.3",
     "electron": "^25.8.1",
     "fs-extra": "^11.1.1",
